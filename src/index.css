@@ -38,6 +38,41 @@
   --color-brand-accent: #ffb961;
   --color-brand-surface: #f7f9ff;
   --color-brand-surface-container: #d1e4fb;
+
+
+  /* Custom Industrial Colors from Design System */
+  --color-primary-navy: #162839;
+  --color-primary-container-slate: #2C3E50;
+  --color-surface-base: #f7f9ff;
+  --color-surface-low: #edf4ff;
+  --color-surface-high: #d9eaff;
+  --color-accent-safety-orange: #ffb961;
+  --color-tertiary-fixed: #ffddb9;
+  --color-on-surface: #091d2e;
+ --color-primary: #162839;
+  --color-primary-container: #2c3e50;
+  --color-on-primary-container: #96a9be;
+  
+  --color-secondary: #4b6076;
+  
+  --color-tertiary: #3a2100;
+  --color-tertiary-container: #583500;
+  --color-tertiary-fixed-dim: #ffb961;
+  
+  --color-background: #f7f9ff;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #edf4ff;
+  --color-surface-container: #e3efff;
+  --color-surface-container-high: #d9eaff;
+  --color-surface-container-highest: #d1e4fb;
+  
+  --color-on-surface: #091d2e;
+  --color-on-surface-variant: #43474c;
+  
+  --color-outline-variant: #c4c6cd;
+
+
+  
 }
 
 body {

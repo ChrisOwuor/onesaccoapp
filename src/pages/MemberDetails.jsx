@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
@@ -26,8 +27,10 @@ import {
   HelpCircle,
   Menu,
   X,
+  ArrowLeft,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import AuthContext, { useAuth } from "../context/AuthContext";
 
 const colors = {
   primary: "#162839",
@@ -41,38 +44,129 @@ const colors = {
 };
 
 export default function MemberDetails() {
-  const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const { memberId } = useParams();
+  const navigate = useNavigate();
+  const { accessToken } = useAuth();
+  const [member, setMember] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const apiUrl = import.meta.env.VITE_API_URL;
+
+  
+
+  useEffect(() => {
+    if (accessToken && memberId) {
+      fetchMember();
+    } else if (!accessToken) {
+      setLoading(false);
+      setError('Not authenticated');
+    }
+  }, [memberId, accessToken]);
+
+  const fetchMember = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${apiUrl}/api/users/${memberId}`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch member details');
+      }
+      const data = await response.json();
+      setMember(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-slate-500">Loading member details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-red-500 mb-4">Error: {error}</p>
+          <button
+            onClick={() => navigate('/app/members')}
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            Back to Members
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!member) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-slate-500 mb-4">Member not found</p>
+          <button
+            onClick={() => navigate('/app/members')}
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            Back to Members
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
+    <>
+      {/* Back Button */}
+      <button
+        onClick={() => navigate('/app/members')}
+        className="mb-6 flex items-center gap-2 text-slate-500 hover:text-primary transition-colors"
+      >
+        <ArrowLeft size={16} />
+        Back to Members
+      </button>
 
-        <>
-          {/* Dashboard Header */}
-          <div className="mb-10 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-            <div>
-              <nav className="flex items-center gap-2 text-on-surface text-[10px] md:text-[11px] mb-4 uppercase tracking-[0.2em] font-bold">
-                <span className="opacity-60">Members</span>
-                <ChevronRight size={12} className="opacity-40" />
-                <span className="text-primary-navy">Profile Details</span>
-              </nav>
-              <h1 className="text-4xl md:text-6xl font-serif font-bold text-primary-navy tracking-tight leading-tight">
-                John M. Mutua
-              </h1>
-              <p className="text-on-surface mt-2 font-medium">
-                Member ID: MV-8923-OIL • Premium Tier
-              </p>
-            </div>
+      {/* Dashboard Header */}
+      <div className="mb-10 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+        <div>
+          <nav className="flex items-center gap-2 text-on-surface text-[10px] md:text-[11px] mb-4 uppercase tracking-[0.2em] font-bold">
+            <span className="opacity-60">Members</span>
+            <ChevronRight size={12} className="opacity-40" />
+            <span className="text-primary-navy">Profile Details</span>
+          </nav>
+          <h1 className="text-4xl md:text-6xl font-serif font-bold text-primary-navy tracking-tight leading-tight">
+            {member.username}
+          </h1>
+          <p className="text-on-surface mt-2 font-medium">
+            Member ID: {member.memberNumber} • {member.role}
+          </p>
+        </div>
 
-            <div className="flex flex-wrap gap-3">
-              <button className="flex-1 md:flex-none bg-white text-primary-navy px-6 py-3 font-bold flex items-center justify-center gap-2 border border-slate-200 hover:bg-slate-50 transition-colors shadow-sm">
-                <Edit size={18} />
-                Edit Profile
-              </button>
-              <button className="flex-1 md:flex-none bg-primary-navy text-white px-6 py-3 font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-md">
-                <PlusCircle size={18} />
-                New Contribution
-              </button>
-            </div>
-          </div>
+        <div className="flex flex-wrap gap-3">
+          <button className="flex-1 md:flex-none bg-white text-primary-navy px-6 py-3 font-bold flex items-center justify-center gap-2 border border-slate-200 hover:bg-slate-50 transition-colors shadow-sm">
+            <Edit size={18} />
+            Edit Profile
+          </button>
+          <button className="flex-1 md:flex-none bg-primary-navy text-white px-6 py-3 font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-md">
+            <PlusCircle size={18} />
+            New Contribution
+          </button>
+        </div>
+      </div>
 
           {/* Bento Grid Layout */}
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
@@ -82,8 +176,8 @@ export default function MemberDetails() {
                 <div className="relative w-32 h-32 mx-auto mb-8 group">
                   <div className="absolute inset-0 bg-primary-navy/10 rounded-full scale-110 blur-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
                   <img
-                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuAYs8lt-NDvhiXTtmyfBvW0Dm64FvUK30_NBkr_Bv-LvlPu2it5gNI4X0zoxocZWslHW0aBvsU2ZkUVv0V9f_X8lR7H4N82KOrm9emh9RnjDk3SzBHPNG8NV5n87fttX5MrvpOgysY7tOFrCzmxwHh2aVvDE3Oe7_GHUE4na9465D46xDcjYssTi7tTy-IWt2WDEmjQAibD-GHRTNqhjDBXvgQ1KzuRSh0isMCZQVyQdz5bU6QSBBshRUrE5MV_j8a3CyEVBRuk0Sew"
-                    alt="Profile"
+                    src={`https://picsum.photos/seed/${member.username}/200/200`}
+                    alt={member.username}
                     className="w-full h-full object-cover rounded-sm grayscale contrast-125 border-4 border-white shadow-inner"
                     referrerPolicy="no-referrer"
                   />
@@ -97,54 +191,60 @@ export default function MemberDetails() {
 
                 <div className="text-center space-y-2 mb-10">
                   <h3 className="font-serif text-3xl font-bold text-primary-navy">
-                    Senior Supervisor
+                    {member.role}
                   </h3>
                   <p className="text-slate-500 text-sm font-medium">
-                    Industrial Processing Plant A
+                    Status: {member.status}
                   </p>
+                  {member.accountApproved && (
+                    <p className="text-green-600 text-xs font-bold uppercase tracking-widest">
+                      Account Approved
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-6 pt-8 border-t border-slate-100">
                   <ContactItem
                     icon={<Mail size={18} />}
                     label="Email Address"
-                    value="john.mutua@mvitaoils.com"
+                    value={member.email}
                   />
                   <ContactItem
                     icon={<PhoneCall size={18} />}
                     label="Phone Number"
-                    value="+254 712 345 678"
+                    value={member.phoneNumber || 'Not provided'}
                   />
                   <ContactItem
                     icon={<MapPin size={18} />}
-                    label="Residency"
-                    value="Mombasa, Industrial Area"
+                    label="Member Since"
+                    value={new Date(member.createdAt).toLocaleDateString()}
                   />
                 </div>
               </div>
 
-              {/* Loan Eligibility Card */}
+              {/* Member Status Card */}
               <div className="bg-primary-container-slate p-8 text-white relative overflow-hidden group shadow-xl">
                 <div className="relative z-10">
                   <h4 className="text-[10px] uppercase tracking-[0.3em] font-black text-white/50 mb-6">
-                    Loan Eligibility
+                    Account Status
                   </h4>
                   <div className="flex items-baseline gap-3 mb-4">
-                    <span className="text-5xl font-serif font-black">2.4M</span>
-                    <span className="text-xs font-bold text-white/60">
-                      KES Available
+                    <span className="text-3xl font-serif font-black">
+                      {member.status}
+                    </span>
+                    <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                      member.accountApproved
+                        ? 'bg-green-500/20 text-green-300'
+                        : 'bg-yellow-500/20 text-yellow-300'
+                    }`}>
+                      {member.accountApproved ? 'Approved' : 'Pending'}
                     </span>
                   </div>
-                  <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden mt-6">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: "72%" }}
-                      transition={{ duration: 1.5, ease: "easeOut" }}
-                      className="bg-accent-safety-orange h-full"
-                    />
-                  </div>
                   <p className="text-[10px] text-white/40 mt-4 font-bold italic tracking-wider">
-                    Based on current multiplier of 3.0x savings
+                    Member since {new Date(member.createdAt).toLocaleDateString()}
+                  </p>
+                  <p className="text-[10px] text-white/40 mt-2 font-bold italic tracking-wider">
+                    Last updated: {new Date(member.updatedAt).toLocaleDateString()}
                   </p>
                 </div>
                 <div className="absolute -bottom-8 -right-8 opacity-5 transform rotate-12 transition-transform duration-700 group-hover:scale-110">
@@ -153,80 +253,95 @@ export default function MemberDetails() {
               </div>
             </div>
 
-            {/* Financial Content Area (Span 8) */}
+            {/* Member Information Area (Span 8) */}
             <div className="xl:col-span-8 space-y-8">
-              {/* Highlights Grid */}
+              {/* Member Info Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                <StatCard
-                  icon={<PiggyBank size={24} className="text-primary-navy" />}
-                  label="TOTAL SAVINGS"
-                  value="842,500"
-                  sub="KES"
-                  trend="+12% vs last quarter"
+                <InfoCard
+                  icon={<Users size={24} className="text-primary-navy" />}
+                  label="MEMBER NUMBER"
+                  value={member.memberNumber}
                   theme="blue-light"
                 />
-                <StatCard
-                  icon={<Landmark size={24} className="text-primary-navy" />}
-                  label="ACTIVE LOANS"
-                  value="1.2M"
-                  sub="KES"
-                  trend="Next due: Oct 15th"
+                <InfoCard
+                  icon={<Mail size={24} className="text-primary-navy" />}
+                  label="EMAIL"
+                  value={member.email}
                   theme="blue-heavy"
                 />
-                <StatCard
-                  icon={<TrendingUp size={24} className="text-primary-navy" />}
-                  label="DIVIDENDS '23"
-                  value="104,200"
-                  sub="KES"
-                  trend="Payable Jan 2024"
+                <InfoCard
+                  icon={<PhoneCall size={24} className="text-primary-navy" />}
+                  label="PHONE"
+                  value={member.phoneNumber || 'Not provided'}
                   theme="orange"
                 />
               </div>
 
-              {/* Transaction Tabs Container */}
+              {/* Member Details Container */}
               <div className="bg-white shadow-sm border border-slate-100 ring-1 ring-slate-900/5">
                 <div className="flex border-b border-slate-100 px-4 md:px-8">
                   <button className="px-4 md:px-6 py-6 border-b-2 border-primary-navy text-primary-navy font-black text-xs md:text-sm tracking-widest uppercase">
-                    Recent Transactions
-                  </button>
-                  <button className="px-4 md:px-6 py-6 text-slate-400 font-bold text-xs md:text-sm tracking-widest uppercase hover:text-primary-navy transition-colors">
-                    Loan History
-                  </button>
-                  <button className="px-4 md:px-6 py-6 text-slate-400 font-bold text-xs md:text-sm tracking-widest uppercase hover:text-primary-navy transition-colors">
-                    Beneficiaries
+                    Member Information
                   </button>
                 </div>
 
                 <div className="p-4 md:p-8">
-                  <div className="space-y-4">
-                    <TransactionItem
-                      icon={<PlusCircle className="text-blue-500" />}
-                      title="Monthly Contribution"
-                      meta="Sept 28, 2023 • M-Pesa Ref: QK29J8K9"
-                      amount="+ 25,000.00"
-                      status="Completed"
-                    />
-                    <TransactionItem
-                      icon={<CreditCard className="text-slate-500" />}
-                      title="Loan Repayment"
-                      meta="Sept 15, 2023 • Payroll Deduction"
-                      amount="- 42,500.00"
-                      status="Completed"
-                      negative
-                    />
-                    <TransactionItem
-                      icon={<Gift className="text-accent-safety-orange" />}
-                      title="Christmas Hamper Fund"
-                      meta="Sept 05, 2023 • Internal Transfer"
-                      amount="+ 2,500.00"
-                      status="Bonus"
-                      isBonus
-                    />
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-2">
+                          Full Name
+                        </h4>
+                        <p className="text-lg font-serif font-bold text-primary-navy">
+                          {member.username}
+                        </p>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-2">
+                          Role
+                        </h4>
+                        <p className="text-lg font-serif font-bold text-primary-navy">
+                          {member.role}
+                        </p>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-2">
+                          Status
+                        </h4>
+                        <p className={`text-lg font-serif font-bold ${
+                          member.status === 'ACTIVE' ? 'text-green-600' : 'text-yellow-600'
+                        }`}>
+                          {member.status}
+                        </p>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-2">
+                          Account Approved
+                        </h4>
+                        <p className={`text-lg font-serif font-bold ${
+                          member.accountApproved ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {member.accountApproved ? 'Yes' : 'No'}
+                        </p>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-2">
+                          Created At
+                        </h4>
+                        <p className="text-lg font-serif font-bold text-primary-navy">
+                          {new Date(member.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-2">
+                          Updated At
+                        </h4>
+                        <p className="text-lg font-serif font-bold text-primary-navy">
+                          {new Date(member.updatedAt).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-
-                  <button className="w-full mt-10 py-5 border-2 border-dashed border-slate-100 text-slate-400 font-black text-[10px] uppercase tracking-[0.3em] hover:bg-slate-50 hover:border-primary-navy/20 transition-all">
-                    View All Statement Records
-                  </button>
                 </div>
               </div>
 
@@ -234,23 +349,38 @@ export default function MemberDetails() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="bg-surface-low p-8 border border-slate-100 shadow-sm">
                   <h4 className="font-serif text-2xl font-bold text-primary-navy mb-8">
-                    Guarantorship Status
+                    Account Summary
                   </h4>
-                  <div className="flex items-center justify-between mb-3 text-[10px] font-black uppercase tracking-widest">
-                    <span className="text-slate-500">Risk Exposure</span>
-                    <span className="text-primary-navy">Low (15%)</span>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-bold text-slate-500 uppercase tracking-widest">
+                        Member ID
+                      </span>
+                      <span className="text-primary-navy font-bold">
+                        {member.id}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-bold text-slate-500 uppercase tracking-widest">
+                        Status
+                      </span>
+                      <span className={`font-bold ${
+                        member.status === 'ACTIVE' ? 'text-green-600' : 'text-yellow-600'
+                      }`}>
+                        {member.status}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-bold text-slate-500 uppercase tracking-widest">
+                        Approved
+                      </span>
+                      <span className={`font-bold ${
+                        member.accountApproved ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {member.accountApproved ? 'Yes' : 'No'}
+                      </span>
+                    </div>
                   </div>
-                  <div className="h-2 bg-white rounded-full overflow-hidden mb-6">
-                    <div className="h-full bg-primary-navy w-[15%]" />
-                  </div>
-                  <p className="text-sm font-medium text-slate-500 leading-relaxed">
-                    Currently guaranteeing 2 members (Sarah W. and Kevin O.) for
-                    a total of{" "}
-                    <span className="text-primary-navy font-bold">
-                      KES 450,000
-                    </span>
-                    .
-                  </p>
                 </div>
 
                 <div className="bg-primary-navy p-8 text-white relative shadow-lg group overflow-hidden">
@@ -259,15 +389,14 @@ export default function MemberDetails() {
                       <Lock size={20} className="text-accent-safety-orange" />
                     </div>
                     <h4 className="font-serif text-2xl font-bold">
-                      Security Vault
+                      Member Actions
                     </h4>
                   </div>
                   <p className="text-sm text-slate-400 mb-8 font-medium leading-relaxed">
-                    Access your secure documents, certificates, and digital
-                    shares ledger.
+                    Manage member account settings, permissions, and access controls.
                   </p>
                   <button className="bg-white/5 hover:bg-white/10 border border-white/10 text-white w-full py-4 text-[10px] font-black uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-3">
-                    Enter Vault
+                    Manage Account
                     <ArrowUpRight size={16} />
                   </button>
                   <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/5 rounded-full blur-3xl group-hover:scale-125 transition-transform duration-700"></div>
@@ -276,10 +405,6 @@ export default function MemberDetails() {
             </div>
           </div>
         </>
-    
-
-     
-  
   );
 }
 
@@ -303,7 +428,7 @@ function ContactItem({ icon, label, value }) {
   );
 }
 
-function StatCard({ icon, label, value, sub, trend, theme }) {
+function InfoCard({ icon, label, value, theme }) {
   const themes = {
     "blue-light": "bg-surface-low",
     "blue-heavy": "bg-surface-high",
@@ -324,16 +449,10 @@ function StatCard({ icon, label, value, sub, trend, theme }) {
       </div>
       <div>
         <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-serif font-black text-primary-navy">
+          <span className="text-2xl font-serif font-black text-primary-navy break-all">
             {value}
           </span>
-          <span className="text-[10px] font-bold text-primary-navy/60">
-            {sub}
-          </span>
         </div>
-        <p className="text-[10px] text-slate-500 font-bold tracking-wide mt-1">
-          {trend}
-        </p>
       </div>
     </div>
   );

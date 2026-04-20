@@ -17,7 +17,6 @@ export default function Header({ onMenuClick }) {
         >
           <Menu size={24} />
         </button>
-       div.flex
       </div>
 
       <div className="flex items-center gap-3 md:gap-8">

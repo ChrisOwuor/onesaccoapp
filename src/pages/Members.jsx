@@ -28,55 +28,75 @@ import {
   Plus,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { useState, useEffect, useContext } from "react";
+import { useNavigate } from "react-router-dom";
+import AuthContext, { useAuth } from "../context/AuthContext";
 
 export default function Members() {
-  const members = [
-    {
-      name: "Samuel K. Otieno",
-      id: "MV-9402-ENG",
-      node: "Unit 04: Mombasa Central",
-      assets: "KES 842,500",
-      allocation: 75,
-      status: "Active",
-      avatar: "https://picsum.photos/seed/engineer1/100/100",
-    },
-    {
-      name: "Fatima Zahra",
-      id: "MV-1185-LOG",
-      node: "Unit 09: Kilindini Port",
-      assets: "KES 1,240,000",
-      allocation: 90,
-      status: "Active",
-      avatar: "https://picsum.photos/seed/manager1/100/100",
-    },
-    {
-      name: "David Chen",
-      id: "MV-4421-SUP",
-      node: "Unit 02: Pwani Refinery",
-      assets: "KES 45,200",
-      allocation: 15,
-      status: "On Probation",
-      avatar: "https://picsum.photos/seed/worker1/100/100",
-    },
-    {
-      name: "Linda Muthoni",
-      id: "MV-0042-DIR",
-      node: "Corporate HQ",
-      assets: "KES 4,120,000",
-      allocation: 100,
-      status: "Active",
-      avatar: "https://picsum.photos/seed/exec1/100/100",
-    },
-    {
-      name: "Hassan Omar",
-      id: "MV-8821-MNT",
-      node: "Unit 11: Export Hub",
-      assets: "KES 215,600",
-      allocation: 45,
-      status: "Suspended",
-      avatar: "https://picsum.photos/seed/specialist1/100/100",
-    },
-  ];
+  const [members, setMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [page, setPage] = useState(0);
+  const [size] = useState(5);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const { accessToken } = useAuth();
+  const navigate = useNavigate();
+  
+  const apiUrl = import.meta.env.VITE_API_URL;
+
+  const filteredMembers = members.filter((member) => {
+    const normalizedSearch = searchTerm.toLowerCase();
+    return [
+      member.username,
+      member.email,
+      member.memberNumber,
+      member.role,
+    ]
+      .filter(Boolean)
+      .some((value) => value.toLowerCase().includes(normalizedSearch));
+  });
+
+  useEffect(() => {
+    if (accessToken) {
+      fetchMembers();
+    } else {
+      setLoading(false);
+      setError('Not authenticated');
+    }
+  }, [page, accessToken]);
+
+  const fetchMembers = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${apiUrl}/api/users?page=${page}&size=${size}`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch members');
+      }
+      const data = await response.json();
+      setMembers(data.content);
+      setTotalPages(data.totalPages);
+      setTotalElements(data.totalElements);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 0 && newPage < totalPages) {
+      setPage(newPage);
+    }
+  };
 
   return (
     <>
@@ -122,7 +142,7 @@ export default function Members() {
           className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-surface-container overflow-hidden"
         >
           <div className="p-4 flex flex-col md:flex-row gap-3 items-center justify-between border-b border-surface-container bg-slate-50/50">
-            <div className="flex items-center gap-3 w-full md:w-auto">
+            <div className="flex items-center gap-3 w-full md:w-auto flex-wrap">
               <div className="relative flex-1 md:w-56">
                 <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                 <select className="w-full bg-white border border-surface-container py-2 rounded-xl text-sm font-bold text-primary pl-10 pr-4 appearance-none focus:ring-2 focus:ring-primary/10 transition-all outline-none">
@@ -141,9 +161,19 @@ export default function Members() {
                 </select>
               </div>
             </div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-              Showing 1-10 of 1,482 members
-            </p>
+            <div className="relative flex-1 min-w-[280px] md:w-[320px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by name, ID or email..."
+                className="w-full bg-white border border-surface-container py-2 pl-10 pr-4 rounded-xl text-sm font-bold text-primary focus:ring-2 focus:ring-primary/10 transition-all outline-none"
+              />
+            </div>
+          </div>
+          <div className="p-4 border-b border-surface-container bg-slate-50/50 text-xs font-bold text-slate-400 uppercase tracking-widest">
+            Showing {filteredMembers.length} of {totalElements} loaded members
           </div>
 
           <div className="overflow-x-auto">
@@ -168,114 +198,152 @@ export default function Members() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {members.map((member, index) => (
-                  <motion.tr
-                    key={member.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="hover:bg-slate-50/80 transition-colors group"
-                  >
-                    <td className="px-4 py-2">
-                      <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-lg bg-surface-container flex items-center justify-center overflow-hidden grayscale group-hover:grayscale-0 transition-all duration-500 shadow-sm">
-                          <img
-                            alt={member.name}
-                            className="w-full h-full object-cover"
-                            src={member.avatar}
-                            referrerPolicy="no-referrer"
-                          />
+                {loading ? (
+                  <tr>
+                    <td colSpan="5" className="px-4 py-8 text-center text-slate-500">
+                      Loading members...
+                    </td>
+                  </tr>
+                ) : error ? (
+                  <tr>
+                    <td colSpan="5" className="px-4 py-8 text-center text-red-500">
+                      Error: {error}
+                    </td>
+                  </tr>
+                ) : filteredMembers.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="px-4 py-8 text-center text-slate-500">
+                      No members found.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredMembers.map((member, index) => (
+                    <motion.tr
+                      key={member.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
+                      onClick={() => navigate(`/app/members/${member.id}`)}
+                    >
+                      <td className="px-4 py-2">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-surface-container flex items-center justify-center overflow-hidden grayscale group-hover:grayscale-0 transition-all duration-500 shadow-sm">
+                            <img
+                              alt={member.username}
+                              className="w-full h-full object-cover"
+                              src={`https://picsum.photos/seed/${member.username}/100/100`}
+                              referrerPolicy="no-referrer"
+                            />
+                          </div>
+                          <div>
+                            <p className="font-bold text-primary group-hover:text-tertiary transition-colors text-sm">
+                              {member.username}
+                            </p>
+                            <p className="text-[10px] text-slate-400 font-mono font-bold tracking-tighter mt-0.5">
+                              {member.memberNumber}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-bold text-primary group-hover:text-tertiary transition-colors text-sm">
-                            {member.name}
+                      </td>
+                      <td className="px-4 py-2">
+                        <span className="px-2 py-1 bg-surface-container text-primary text-[9px] font-black uppercase tracking-widest rounded border border-primary/5 shadow-sm">
+                          {member.role}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2">
+                        <div className="space-y-1">
+                          <p className="text-[13px] font-serif font-black text-primary">
+                            {member.email}
                           </p>
-                          <p className="text-[10px] text-slate-400 font-mono font-bold tracking-tighter mt-0.5">
-                            {member.id}
+                          <p className="text-[10px] text-slate-400 font-mono">
+                            {member.phoneNumber}
                           </p>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-2">
-                      <span className="px-2 py-1 bg-surface-container text-primary text-[9px] font-black uppercase tracking-widest rounded border border-primary/5 shadow-sm">
-                        {member.node}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2">
-                      <div className="space-y-1">
-                        <p className="text-[13px] font-serif font-black text-primary">
-                          {member.assets}
-                        </p>
-                        <div className="w-20 h-1 bg-slate-100 rounded-full overflow-hidden">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${member.allocation}%` }}
-                            transition={{
-                              duration: 1,
-                              delay: 0.5 + index * 0.1,
-                            }}
-                            className="h-full bg-primary"
-                          />
+                      </td>
+                      <td className="px-4 py-2">
+                        <div
+                          className={`flex items-center gap-2 font-black text-[10px] uppercase tracking-widest ${
+                            member.status === "ACTIVE"
+                              ? "text-emerald-600"
+                              : member.status === "SUSPENDED"
+                                ? "text-red-600"
+                                : "text-tertiary"
+                          }`}
+                        >
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              member.status === "ACTIVE"
+                                ? "bg-emerald-500"
+                                : member.status === "SUSPENDED"
+                                  ? "bg-red-500"
+                                  : "bg-tertiary"
+                            } animate-pulse`}
+                          ></span>
+                          {member.status}
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-2">
-                      <div
-                        className={`flex items-center gap-2 font-black text-[10px] uppercase tracking-widest ${
-                          member.status === "Active"
-                            ? "text-emerald-600"
-                            : member.status === "Suspended"
-                              ? "text-red-600"
-                              : "text-tertiary"
-                        }`}
-                      >
-                        <span
-                          className={`w-2 h-2 rounded-full ${
-                            member.status === "Active"
-                              ? "bg-emerald-500"
-                              : member.status === "Suspended"
-                                ? "bg-red-500"
-                                : "bg-tertiary"
-                          } animate-pulse`}
-                        ></span>
-                        {member.status}
-                      </div>
-                    </td>
-                    <td className="px-8 py-6 text-right">
-                      <button className="text-slate-300 hover:text-primary transition-colors p-2 hover:bg-slate-200/50 rounded-lg">
-                        <MoreVertical className="w-5 h-5" />
-                      </button>
-                    </td>
-                  </motion.tr>
-                ))}
+                        {member.accountApproved && (
+                          <div className="text-[8px] text-emerald-500 font-bold uppercase tracking-widest mt-1">
+                            Approved
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-8 py-6 text-right">
+                        <button className="text-slate-300 hover:text-primary transition-colors p-2 hover:bg-slate-200/50 rounded-lg">
+                          <MoreVertical className="w-5 h-5" />
+                        </button>
+                      </td>
+                    </motion.tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
 
           <div className="p-4 bg-white border-t border-slate-100 flex items-center justify-between">
             <button
+              onClick={() => handlePageChange(page - 1)}
+              disabled={page === 0}
               className="px-3 py-1.5 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-colors flex items-center gap-2 disabled:opacity-50"
-              disabled
             >
               <ChevronLeft className="w-4 h-4" />
               Prev
             </button>
             <div className="flex items-center gap-2">
-              <button className="h-8 w-8 rounded-lg bg-primary text-white font-black text-xs shadow-lg shadow-primary/20">
-                1
-              </button>
-              <button className="h-8 w-8 rounded-lg text-slate-600 font-black text-xs hover:bg-slate-100 transition-colors">
-                2
-              </button>
-              <button className="h-8 w-8 rounded-lg text-slate-600 font-black text-xs hover:bg-slate-100 transition-colors">
-                3
-              </button>
-              <span className="px-2 text-slate-300 font-bold">...</span>
-              <button className="h-8 w-8 rounded-lg text-slate-600 font-black text-xs hover:bg-slate-100 transition-colors">
-                148
-              </button>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                const pageNum = Math.max(0, page - 2) + i;
+                if (pageNum >= totalPages) return null;
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => handlePageChange(pageNum)}
+                    className={`h-8 w-8 rounded-lg font-black text-xs ${
+                      pageNum === page
+                        ? "bg-primary text-white shadow-lg shadow-primary/20"
+                        : "text-slate-600 hover:bg-slate-100 transition-colors"
+                    }`}
+                  >
+                    {pageNum + 1}
+                  </button>
+                );
+              })}
+              {totalPages > 5 && page < totalPages - 3 && (
+                <span className="px-2 text-slate-300 font-bold">...</span>
+              )}
+              {totalPages > 5 && page < totalPages - 3 && (
+                <button
+                  onClick={() => handlePageChange(totalPages - 1)}
+                  className="h-8 w-8 rounded-lg text-slate-600 font-black text-xs hover:bg-slate-100 transition-colors"
+                >
+                  {totalPages}
+                </button>
+              )}
             </div>
-            <button className="px-3 py-1.5 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-colors flex items-center gap-2 group">
+            <button
+              onClick={() => handlePageChange(page + 1)}
+              disabled={page >= totalPages - 1}
+              className="px-3 py-1.5 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-colors flex items-center gap-2 group disabled:opacity-50"
+            >
               Next
               <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
             </button>

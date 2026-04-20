@@ -82,7 +82,9 @@ export default function Landing() {
             <CircleHelp size={20} />
           </button>
           <button className="bg-industrial-highlight text-[#663e00] px-5 py-2 text-xs font-bold rounded-lg uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-industrial-highlight/20">
+         <a href="/login">
             Portal Login
+            </a>
           </button>
         </div>
       </nav>
