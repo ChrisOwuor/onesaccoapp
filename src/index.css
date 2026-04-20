@@ -1,0 +1,52 @@
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,700&family=Work+Sans:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Newsreader", serif;
+  --font-sans: "Work Sans", sans-serif;
+  
+  --color-primary: #162839;
+  --color-primary-container: #2C3E50;
+  --color-on-primary: #ffffff;
+  --color-secondary: #4B6076;
+  --color-tertiary: #E67E22;
+  --color-tertiary-container: #583500;
+  --color-surface: #F7F9FF;
+  --color-surface-container-low: #EDF4FF;
+  --color-surface-container: #E3EFFF;
+  --color-surface-container-high: #D9EAFF;
+  --color-surface-container-highest: #D1E4FB;
+  --color-surface-container-lowest: #FFFFFF;
+  --color-on-surface: #091D2E;
+  --color-outline-variant: #C4C6CD;
+  --color-error: #BA1A1A;
+   --font-serif: "Newsreader", serif;
+  --font-sans: "Work Sans", sans-serif;
+  
+  --color-industrial-blue: #162839;
+  --color-industrial-gold: #E67E22;
+  --color-industrial-highlight: #ffb961;
+
+
+    --color-industrial-blue: #162839;
+  --color-industrial-gold: #E67E22;
+  --color-industrial-highlight: #ffb961;
+
+
+   --color-brand-primary: #162839;
+  --color-brand-secondary: #2c3e50;
+  --color-brand-accent: #ffb961;
+  --color-brand-surface: #f7f9ff;
+  --color-brand-surface-container: #d1e4fb;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-surface);
+  color: var(--color-on-surface);
+}
+
+.font-serif {
+  font-family: var(--font-serif);
+}
+
