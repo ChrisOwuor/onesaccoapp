@@ -9,8 +9,8 @@ import DashboardHome from './pages/DashboardHome.jsx';
 import ProtectedRoute from './utils/ProtectedRoute.jsx';
 import Members from './pages/Members.jsx';
 import MemberDetails from './pages/MemberDetails.jsx';
-import LoansUpdated from './pages/LoansUpdated.jsx';
 import LoanDetails from './pages/LoanDetails.jsx';
+import Loans from './pages/Loans.jsx';
 
 
 export default function App() {
@@ -30,10 +30,8 @@ export default function App() {
         <Route index element={<DashboardHome />} />
         <Route path="members" element={<Members />} />
         <Route path="members/:memberId" element={<MemberDetails />} />
-
         <Route path="savings" element={<div>Savings (placeholder)</div>} />
-    
-        <Route path="loans" element={<LoanDetails />} />
+        <Route path="loans" element={<Loans/>} />
         <Route path="loans/:loanId" element={<LoanDetails />} />
         <Route path="reports" element={<div>Reports (placeholder)</div>} />
         <Route path="settings" element={<div>Settings (placeholder)</div>} />
