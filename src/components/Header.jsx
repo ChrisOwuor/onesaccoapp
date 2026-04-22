@@ -17,6 +17,9 @@ export default function Header({ onMenuClick }) {
         >
           <Menu size={24} />
         </button>
+        <span className=" text-xl md:text-2xl font-bold font-serif text-white tracking-tight">
+          Mvita Oils Sacco
+        </span>
       </div>
 
       <div className="flex items-center gap-3 md:gap-8">

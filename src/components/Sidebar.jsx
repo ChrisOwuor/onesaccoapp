@@ -2,30 +2,28 @@ import React from "react";
 import {
   LayoutDashboard,
   Users,
-  Wallet,
   Banknote,
   Receipt,
-  ArrowUpFromLine,
-  FileText,
-  UserCog,
   Settings,
   LogOut,
-  X,
+  ChevronDown,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 
+// normal loop items only
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", to: "/app" },
   { icon: Users, label: "Members", to: "/app/members" },
-  { icon: Wallet, label: "Savings / Accounts", to: "/app/savings" },
-  { icon: Banknote, label: "Loans", to: "/app/loans" },
-  { icon: Receipt, label: "Repayments", to: "/app/repayments" },
-  { icon: ArrowUpFromLine, label: "Withdrawals", to: "/app/withdrawals" },
-  { icon: FileText, label: "Reports", to: "/app/reports" },
-  { icon: UserCog, label: "Users", to: "/app/users" },
-  { icon: Settings, label: "Settings", to: "/app/settings" },
+  { icon: Receipt, label: "Ledger", to: "/app/ledger" },
+  { icon: Banknote, label: "Accounts", to: "/app/my-account" },
+];
+
+const loanItems = [
+  { label: "All Loans", to: "/app/loans" },
+  { label: "My Loans", to: "/app/loans/my-loans" },
+  { label: "Loan Products", to: "/app/loans/products" },
 ];
 
 export default function Sidebar({ isOpen, onClose }) {
@@ -33,17 +31,42 @@ export default function Sidebar({ isOpen, onClose }) {
     typeof window !== "undefined" ? window.innerWidth < 1024 : false,
   );
 
+  const location = useLocation();
+
+  const [openMenus, setOpenMenus] = React.useState({
+    Loans: location.pathname.startsWith("/app/loans"),
+  });
+
   React.useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth < 1024);
     };
+
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  React.useEffect(() => {
+    if (location.pathname.startsWith("/app/loans")) {
+      setOpenMenus((prev) => ({ ...prev, Loans: true }));
+    }
+  }, [location.pathname]);
+
+  const toggleMenu = (label) => {
+    setOpenMenus((prev) => ({
+      ...prev,
+      [label]: !prev[label],
+    }));
+  };
+
+  const handleChildClick = () => {
+    if (isMobile && onClose) {
+      onClose();
+    }
+  };
+
   return (
     <>
-      {/* Backdrop for mobile */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -60,16 +83,16 @@ export default function Sidebar({ isOpen, onClose }) {
         initial={isMobile ? { x: -256 } : { x: 0 }}
         animate={isMobile ? { x: isOpen ? 0 : -256 } : { x: 0 }}
         transition={{ type: "spring", damping: 25, stiffness: 200 }}
-        className={`fixed left-0 top-0 lg:top-16 h-full lg:h-[calc(100vh-64px)] w-64 bg-[#f8fafc] border-r border-[#e2e8f0]/40 flex flex-col py-6 z-50 lg:z-30 shadow-2xl lg:shadow-none`}
+        className="fixed left-0 top-0 lg:top-16 h-full lg:h-[calc(100vh-64px)] w-64 bg-[#f8fafc] border-r border-[#e2e8f0]/40 flex flex-col py-6 z-50 lg:z-30 shadow-2xl lg:shadow-none"
       >
-        
-
         <nav className="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">
+          {/* normal items */}
           {navItems.map((item) => (
             <motion.div key={item.label} whileHover={{ x: 4 }}>
               <NavLink
                 to={item.to}
                 end={item.to === "/app"}
+                onClick={handleChildClick}
                 className={({ isActive }) =>
                   `flex items-center gap-4 px-4 py-3 rounded-lg transition-all duration-200 ${
                     isActive
@@ -83,6 +106,77 @@ export default function Sidebar({ isOpen, onClose }) {
               </NavLink>
             </motion.div>
           ))}
+
+          {/* settings as single entity */}
+          <motion.div whileHover={{ x: 4 }}>
+            <NavLink
+              to="/app/settings"
+              onClick={handleChildClick}
+              className={({ isActive }) =>
+                `flex items-center gap-4 px-4 py-3 rounded-lg transition-all duration-200 ${
+                  isActive
+                    ? "text-primary font-bold bg-white shadow-sm border-r-4 border-tertiary"
+                    : "text-secondary hover:bg-white hover:shadow-sm"
+                }`
+              }
+            >
+              <Settings size={20} />
+              <span className="text-sm font-medium">Settings</span>
+            </NavLink>
+          </motion.div>
+
+          {/* loans dropdown only */}
+          <div className="mt-2 space-y-1">
+            <motion.button
+              whileHover={{ x: 4 }}
+              onClick={() => toggleMenu("Loans")}
+              type="button"
+              className="w-full flex items-center justify-between px-4 py-3 rounded-lg text-secondary transition-all duration-200 hover:bg-white hover:shadow-sm"
+            >
+              <div className="flex items-center gap-4">
+                <Banknote size={20} />
+                <span className="text-sm font-medium">Loans</span>
+              </div>
+
+              <motion.span
+                animate={{ rotate: openMenus["Loans"] ? 180 : 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <ChevronDown size={16} />
+              </motion.span>
+            </motion.button>
+
+            <AnimatePresence initial={false}>
+              {openMenus["Loans"] && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden ml-4 space-y-1"
+                >
+                  {loanItems.map((child) => (
+                    <NavLink
+                      key={child.label}
+                      to={child.to}
+                      end={child.to === "/app/loans"}
+                      onClick={handleChildClick}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all ${
+                          isActive
+                            ? "bg-white text-primary font-bold shadow-sm border-r-4 border-tertiary"
+                            : "text-secondary hover:bg-white hover:shadow-sm"
+                        }`
+                      }
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
+                      <span>{child.label}</span>
+                    </NavLink>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </nav>
 
         <div className="px-4 mt-auto pt-6 border-t border-outline-variant/10">

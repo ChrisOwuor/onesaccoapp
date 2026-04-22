@@ -11,6 +11,9 @@ import Members from './pages/Members.jsx';
 import MemberDetails from './pages/MemberDetails.jsx';
 import LoanDetails from './pages/LoanDetails.jsx';
 import Loans from './pages/Loans.jsx';
+import SaccoLedger from './pages/SaccoLedger.jsx';
+import LoanProducts from './pages/LoanProducts.jsx';
+import AccountsPage from './pages/AccountsPage.jsx';
 
 
 export default function App() {
@@ -31,8 +34,11 @@ export default function App() {
         <Route path="members" element={<Members />} />
         <Route path="members/:memberId" element={<MemberDetails />} />
         <Route path="savings" element={<div>Savings (placeholder)</div>} />
-        <Route path="loans" element={<Loans/>} />
+        <Route path="loans" element={<Loans />} />
         <Route path="loans/:loanId" element={<LoanDetails />} />
+        <Route path="ledger" element={<SaccoLedger />} />
+        <Route path="loans/products" element={<LoanProducts />} />
+                <Route path="my-account" element={<AccountsPage />} />
         <Route path="reports" element={<div>Reports (placeholder)</div>} />
         <Route path="settings" element={<div>Settings (placeholder)</div>} />
       </Route>

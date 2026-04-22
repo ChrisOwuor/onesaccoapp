@@ -76,9 +76,12 @@ export default function MemberDetails() {
           >
             <ArrowLeft size={16} /> Back
           </button>
+          <h2 className="text-2xl font-serif font-bold text-[color:var(--color-primary-navy)]">
+            {member.username}
+          </h2>
         </div>
         <div className="flex items-center gap-3">
-          <button className="px-3 py-2 text-[color:var(--color-brand-primary)] hover:text-[color:var(--color-primary)]  font-bold rounded-md flex items-center gap-2">
+          <button className="px-3 py-2 bg-primary text-white font-bold rounded-md flex items-center gap-2">
             <Edit size={14} /> Edit
           </button>
         </div>

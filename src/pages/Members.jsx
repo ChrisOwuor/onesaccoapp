@@ -40,21 +40,16 @@ export default function Members() {
   const [size] = useState(5);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
 
   const { accessToken } = useAuth();
   const navigate = useNavigate();
-  
+
   const apiUrl = import.meta.env.VITE_API_URL;
 
   const filteredMembers = members.filter((member) => {
     const normalizedSearch = searchTerm.toLowerCase();
-    return [
-      member.username,
-      member.email,
-      member.memberNumber,
-      member.role,
-    ]
+    return [member.username, member.email, member.memberNumber, member.role]
       .filter(Boolean)
       .some((value) => value.toLowerCase().includes(normalizedSearch));
   });
@@ -64,7 +59,7 @@ export default function Members() {
       fetchMembers();
     } else {
       setLoading(false);
-      setError('Not authenticated');
+      setError("Not authenticated");
     }
   }, [page, accessToken]);
 
@@ -72,14 +67,17 @@ export default function Members() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${apiUrl}/api/users?page=${page}&size=${size}`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `${apiUrl}/api/users?page=${page}&size=${size}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
         },
-      });
+      );
       if (!response.ok) {
-        throw new Error('Failed to fetch members');
+        throw new Error("Failed to fetch members");
       }
       const data = await response.json();
       setMembers(data.content);
@@ -200,19 +198,28 @@ export default function Members() {
               <tbody className="divide-y divide-slate-100">
                 {loading ? (
                   <tr>
-                    <td colSpan="5" className="px-4 py-8 text-center text-slate-500">
+                    <td
+                      colSpan="5"
+                      className="px-4 py-8 text-center text-slate-500"
+                    >
                       Loading members...
                     </td>
                   </tr>
                 ) : error ? (
                   <tr>
-                    <td colSpan="5" className="px-4 py-8 text-center text-red-500">
+                    <td
+                      colSpan="5"
+                      className="px-4 py-8 text-center text-red-500"
+                    >
                       Error: {error}
                     </td>
                   </tr>
                 ) : filteredMembers.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="px-4 py-8 text-center text-slate-500">
+                    <td
+                      colSpan="5"
+                      className="px-4 py-8 text-center text-slate-500"
+                    >
                       No members found.
                     </td>
                   </tr>
@@ -373,89 +380,5 @@ export default function Members() {
         <Plus className="w-8 h-8" />
       </motion.button>
     </>
-  );
-}
-
-function NavItem({ icon: Icon, label, active = false }) {
-  return (
-    <a
-      href="#"
-      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 group relative ${
-        active
-          ? "text-primary font-black bg-surface-container-low shadow-sm translate-x-1"
-          : "text-slate-500 hover:text-primary hover:bg-surface-container-low/50 hover:translate-x-1"
-      }`}
-    >
-      {active && (
-        <motion.div
-          layoutId="sidebar-active"
-          className="absolute right-0 top-1/4 bottom-1/4 w-1 bg-tertiary rounded-l-full"
-        />
-      )}
-      <Icon
-        className={`w-5 h-5 ${active ? "text-primary" : "text-slate-400 group-hover:text-primary"}`}
-      />
-      <span className="text-sm font-semibold tracking-tight">{label}</span>
-    </a>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  trend = null,
-  trendIcon: TrendIcon = null,
-  description = null,
-  dark = false,
-}) {
-  return (
-    <motion.div
-      whileHover={{ y: -4 }}
-      className={`p-7 rounded-2xl shadow-sm border border-surface-container relative overflow-hidden h-full flex flex-col justify-between transition-all ${
-        dark
-          ? "bg-primary text-white shadow-xl shadow-primary/20"
-          : "bg-white text-primary"
-      }`}
-    >
-      {/* Decorative Background Element */}
-      <div
-        className={`absolute top-0 right-0 w-16 h-1 w-full opacity-10 ${
-          label === "Total Partners"
-            ? "bg-tertiary"
-            : label === "Active Savings"
-              ? "bg-primary"
-              : "bg-slate-300"
-        }`}
-      />
-
-      <div>
-        <p
-          className={`text-[10px] font-black uppercase tracking-[0.2em] mb-4 ${dark ? "text-white/60" : "text-slate-400"}`}
-        >
-          {label}
-        </p>
-        <p
-          className={`text-3xl font-serif font-black tracking-tight mb-2 ${dark ? "text-white" : "text-primary"}`}
-        >
-          {value}
-        </p>
-      </div>
-
-      <div className="mt-4">
-        {trend && (
-          <div className="flex items-center gap-1.5 text-emerald-600 text-xs font-black uppercase tracking-wider">
-            {TrendIcon && <TrendIcon className="w-3.5 h-3.5" />}
-            {trend}
-          </div>
-        )}
-        {description && (
-          <p
-            className={`text-[10px] font-bold uppercase tracking-widest ${dark ? "text-white/80" : "text-slate-400"}`}
-          >
-            {description}
-          </p>
-        )}
-      </div>
-    </motion.div>
   );
 }

@@ -7,10 +7,21 @@ import {
   ChevronLeft,
   ChevronRight,
   ShieldCheck,
+  Wallet,
+  Landmark,
+  PiggyBank,
+  HandCoins,
+  TrendingUp,
+  TrendingDown,
+  AlertTriangle,
+  BarChart3,
+  Clock,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+
+
 
 const LOANS_TABLE = [
   {
@@ -150,6 +161,37 @@ export default function Loans() {
     return matchesSearch && matchesStatus && matchesType;
   });
 
+   const accountSummary = [
+      {
+        name: "M-Pesa Float",
+        value: "KES 4.82M",
+        icon: Wallet,
+        trend: "+4.2%",
+        positive: true,
+      },
+      {
+        name: "Bank Reserve",
+        value: "KES 12.45M",
+        icon: Landmark,
+        trend: "+1.8%",
+        positive: true,
+      },
+      {
+        name: "Savings Pool",
+        value: "KES 18.20M",
+        icon: PiggyBank,
+        trend: "+7.1%",
+        positive: true,
+      },
+      {
+        name: "Loans Receivable",
+        value: "KES 8.12M",
+        icon: HandCoins,
+        trend: "-2.4%",
+        positive: false,
+      },
+    ];
+
   const totalPages = Math.max(1, Math.ceil(filteredLoans.length / size));
   const pagedLoans = filteredLoans.slice(page * size, page * size + size);
 
@@ -169,71 +211,139 @@ export default function Loans() {
 
   return (
     <>
-      <header className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-8">
+      <header className="mb-10 grid grid-cols-1 xl:grid-cols-[1.3fr_0.7fr] gap-6 items-start">
+        {/* LEFT SIDE */}
+        <div className="space-y-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-3"
+          >
+            <span className="text-tertiary font-bold tracking-[0.3em] text-[10px] uppercase font-sans">
+              Loans Portfolio
+            </span>
+
+            <h1 className="text-5xl md:text-6xl font-serif font-black text-primary leading-tight tracking-tight">
+              Loans Overview
+            </h1>
+
+            <p className="text-secondary/80 max-w-xl text-lg font-medium leading-relaxed">
+              Centralized view of all issued loans, repayment performance, and
+              active credit exposure across members.
+            </p>
+          </motion.div>
+
+          <div className="flex items-center gap-4 flex-wrap">
+            <button className="px-6 py-3.5 bg-surface-container-high text-primary font-bold rounded-lg hover:bg-surface-container-highest transition-all flex items-center gap-2 group shadow-sm">
+              <Download className="w-5 h-5 group-hover:translate-y-0.5 transition-transform" />
+              Export Loans
+            </button>
+
+            <button className="px-6 py-3.5 bg-primary text-white font-bold rounded-lg shadow-xl shadow-primary/20 hover:bg-primary-container hover:-translate-y-0.5 transition-all flex items-center gap-2">
+              <UserPlus className="w-5 h-5" />
+              New Loan
+            </button>
+          </div>
+        </div>
+
+        {/* RIGHT SIDE */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-3"
+          initial={{ opacity: 0, x: 16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.08 }}
+          className="bg-primary text-white rounded-xl shadow-lg overflow-hidden"
         >
-          <span className="text-tertiary font-bold tracking-[0.3em] text-[10px] uppercase font-sans">
-            Lonsa Portfolio
-          </span>
-          <h1 className="text-5xl md:text-6xl font-serif font-black text-primary leading-tight tracking-tight">
-            Loans Updated
-          </h1>
-          <p className="text-secondary/80 max-w-xl text-lg font-medium leading-relaxed">
-            Updated loan registry using the Lonsa table fields and the same
-            design pattern as the member directory.
-          </p>
+          {/* Header */}
+          <div className="px-4 py-3 border-b border-white/10">
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">
+              Loan Metrics
+            </p>
+            <h3 className="mt-1 text-sm font-serif font-black text-white">
+              Portfolio Snapshot
+            </h3>
+          </div>
+
+          {/* LIST */}
+          <div className="divide-y divide-white/10">
+            {/* Total Loans */}
+            
+
+            {/* Active Loans */}
+            <div className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-white/5 transition-colors">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="h-8 w-8 rounded-md bg-white/10 flex items-center justify-center">
+                  <HandCoins className="w-4 h-4 text-white" />
+                </div>
+
+                <div>
+                  <p className="text-[13px] font-bold text-white truncate">
+                    Active Loans
+                  </p>
+                  <div className="mt-0.5 flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-emerald-300">
+                    <TrendingUp className="w-3 h-3" />+
+                    {9 || "—"}
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-right">
+                <p className="text-sm font-serif font-black text-white">
+                  {activeLoans}
+                </p>
+              </div>
+            </div>
+
+            {/* Pending Loans */}
+            <div className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-white/5 transition-colors">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="h-8 w-8 rounded-md bg-white/10 flex items-center justify-center">
+                  <Clock className="w-4 h-4 text-white" />
+                </div>
+
+                <div>
+                  <p className="text-[13px] font-bold text-white truncate">
+                    Pending Review
+                  </p>
+                  <div className="mt-0.5 flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-amber-300">
+                    <TrendingUp className="w-3 h-3" />+
+                    {9 || "—"}
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-right">
+                <p className="text-sm font-serif font-black text-white">
+                  {pendingLoans}
+                </p>
+              </div>
+            </div>
+
+            {/* Defaulted / Risk (optional but 🔥) */}
+            <div className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-white/5 transition-colors">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="h-8 w-8 rounded-md bg-white/10 flex items-center justify-center">
+                  <AlertTriangle className="w-4 h-4 text-white" />
+                </div>
+
+                <div>
+                  <p className="text-[13px] font-bold text-white truncate">
+                    At Risk
+                  </p>
+                  <div className="mt-0.5 flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-red-300">
+                    <TrendingDown className="w-3 h-3" />-{3 || "—"}
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-right">
+                <p className="text-sm font-serif font-black text-white">
+                  {3 || 0}
+                </p>
+              </div>
+            </div>
+          </div>
         </motion.div>
-
-        <div className="flex items-center gap-4">
-          <button className="px-6 py-3.5 bg-surface-container-high text-primary font-bold rounded-lg hover:bg-surface-container-highest transition-all flex items-center gap-2 group shadow-sm">
-            <Download className="w-5 h-5 group-hover:translate-y-0.5 transition-transform" />
-            Export Loans
-          </button>
-          <button className="px-6 py-3.5 bg-primary text-white font-bold rounded-lg shadow-xl shadow-primary/20 hover:bg-primary-container hover:-translate-y-0.5 transition-all flex items-center gap-2">
-            <UserPlus className="w-5 h-5" />
-            New Loan
-          </button>
-        </div>
       </header>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="rounded-2xl border border-surface-container bg-slate-50 p-4 shadow-sm">
-          <p className="text-[11px] uppercase tracking-[0.32em] text-slate-400 font-bold">
-            Total Loans
-          </p>
-          <p className="mt-3 text-2xl font-serif font-black text-primary">
-            {totalLoans}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            Total loan records in the Lonsa dataset.
-          </p>
-        </div>
-        <div className="rounded-2xl border border-surface-container bg-slate-50 p-4 shadow-sm">
-          <p className="text-[11px] uppercase tracking-[0.32em] text-slate-400 font-bold">
-            Active Loans
-          </p>
-          <p className="mt-3 text-2xl font-serif font-black text-primary">
-            {activeLoans}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            Loans currently marked as active.
-          </p>
-        </div>
-        <div className="rounded-2xl border border-surface-container bg-slate-50 p-4 shadow-sm">
-          <p className="text-[11px] uppercase tracking-[0.32em] text-slate-400 font-bold">
-            Pending Review
-          </p>
-          <p className="mt-3 text-2xl font-serif font-black text-primary">
-            {pendingLoans}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            Loans awaiting approval or funding.
-          </p>
-        </div>
-      </div>
 
       <motion.div
         initial={{ opacity: 0, scale: 0.98 }}
@@ -395,18 +505,18 @@ export default function Loans() {
           </button>
         </div>
       </motion.div>
-       {/* Footer Compliance Note */}
-              <footer className="mt-16 py-10 border-t border-surface-container flex flex-col md:flex-row justify-between items-center gap-6">
-                <div className="flex items-center gap-4">
-                  <ShieldCheck className="w-6 h-6 text-primary" />
-                  <p className="text-[10px] text-secondary font-black uppercase tracking-[0.2em]">
-                    Authorized Security Access Only | 256-Bit Industrial Encryption
-                  </p>
-                </div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                  © 2024 Mvita Oils Sacco. All industrial data protected.
-                </p>
-              </footer>
+      {/* Footer Compliance Note */}
+      <footer className="mt-16 py-10 border-t border-surface-container flex flex-col md:flex-row justify-between items-center gap-6">
+        <div className="flex items-center gap-4">
+          <ShieldCheck className="w-6 h-6 text-primary" />
+          <p className="text-[10px] text-secondary font-black uppercase tracking-[0.2em]">
+            Authorized Security Access Only | 256-Bit Industrial Encryption
+          </p>
+        </div>
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+          © 2024 Mvita Oils Sacco. All industrial data protected.
+        </p>
+      </footer>
     </>
   );
 }
