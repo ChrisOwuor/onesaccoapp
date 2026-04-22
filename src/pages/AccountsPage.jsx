@@ -1,22 +1,18 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import {
   Download,
   Plus,
   Send,
   ArrowDownLeft,
-  PiggyBank,
-  Wallet,
-  Landmark,
   Search,
   Filter,
   MoreVertical,
   ChevronLeft,
   ChevronRight,
   ShieldCheck,
-  TrendingUp,
-  Eye,
 } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
 const recentTransactions = [
   {
@@ -61,29 +57,6 @@ const recentTransactions = [
   },
 ];
 
-const quickActions = [
-  {
-    label: "Deposit Savings",
-    icon: Plus,
-    tone: "bg-emerald-50 text-emerald-700 border-emerald-100",
-  },
-  {
-    label: "Withdraw Funds",
-    icon: ArrowDownLeft,
-    tone: "bg-amber-50 text-amber-700 border-amber-100",
-  },
-  {
-    label: "Transfer Funds",
-    icon: Send,
-    tone: "bg-sky-50 text-sky-700 border-sky-100",
-  },
-  {
-    label: "Request Statement",
-    icon: Download,
-    tone: "bg-slate-50 text-slate-700 border-slate-200",
-  },
-];
-
 const getStatusStyles = (status) => {
   switch (status) {
     case "COMPLETED":
@@ -109,12 +82,123 @@ const getStatusStyles = (status) => {
   }
 };
 
+const getAccountStatusTone = (status) => {
+  switch (status) {
+    case "ACTIVE":
+      return "text-emerald-300";
+    case "PENDING":
+      return "text-amber-300";
+    case "SUSPENDED":
+      return "text-red-300";
+    case "CLOSED":
+      return "text-slate-300";
+    default:
+      return "text-slate-300";
+  }
+};
+
 export default function AccountsPage() {
+  const apiUrl = import.meta.env.VITE_API_URL;
+
+
+  const { accessToken, user } = useAuth();
+
+  const [accounts, setAccounts] = useState([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(true);
+  const [accountsError, setAccountsError] = useState(null);
+  const [selectedAccountId, setSelectedAccountId] = useState(null);
+
+  useEffect(() => {
+    if (!accessToken || !user?.id) {
+      setLoadingAccounts(false);
+      return;
+    }
+
+    fetchMemberAccounts();
+    console.log({ apiUrl });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken, user?.id]);
+
+  const fetchMemberAccounts = async () => {
+    setLoadingAccounts(true);
+    setAccountsError(null);
+
+    try {
+      const response = await fetch(
+        `${apiUrl}/api/member-accounts/member/${user.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      let data = [];
+      try {
+        data = await response.json();
+      } catch {
+        data = [];
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          data?.message || data?.error || "Failed to fetch member accounts",
+        );
+      }
+
+      const normalizedAccounts = Array.isArray(data) ? data : [];
+      setAccounts(normalizedAccounts);
+
+      const primary =
+        normalizedAccounts.find((account) => account.primaryAccount) ||
+        normalizedAccounts[0] ||
+        null;
+
+      setSelectedAccountId(primary?.id ?? null);
+    } catch (error) {
+      setAccountsError(error.message || "Failed to fetch member accounts");
+    } finally {
+      setLoadingAccounts(false);
+    }
+  };
+
+  const selectedAccount = useMemo(() => {
+    if (!accounts.length) return null;
+
+    return (
+      accounts.find((account) => account.id === selectedAccountId) ||
+      accounts.find((account) => account.primaryAccount) ||
+      accounts[0]
+    );
+  }, [accounts, selectedAccountId]);
+
+  const totalBalance = useMemo(() => {
+    if (!accounts.length) return "KES 0.00";
+
+    const balances = accounts.map((account) => account.balance || "KES 0.00");
+
+    const numericTotal = balances.reduce((sum, balance) => {
+      const value = Number(String(balance).replace(/[^\d.-]/g, "")) || 0;
+      return sum + value;
+    }, 0);
+
+    return `KES ${numericTotal.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  }, [accounts]);
+
+  const formatAccountNumber = (value) => {
+    if (!value) return "N/A";
+    return value;
+  };
+
   return (
     <>
       {/* Header */}
       <header className="mb-1 grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6 items-start">
-        <div className=" gap-8 items-start mb-10">
+        <div className="gap-8 items-start mb-10">
           {/* LEFT */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -137,118 +221,152 @@ export default function AccountsPage() {
             className="bg-white rounded-2xl border border-surface-container shadow-xl shadow-slate-200/40 overflow-hidden"
           >
             <div className="p-6 md:p-7 bg-slate-50/50 space-y-6">
-             
-
-              {/* Row */}
-              <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-6 sm:gap-8">
-                {/* Balance */}
-                <div>
-                  <p className="text-[11px] uppercase tracking-widest text-secondary/60 font-bold">
-                    Balance
-                  </p>
-                  <h3 className="text-xl md:text-2xl font-serif font-bold text-primary">
-                    KES 126,480
-                  </h3>
+              {loadingAccounts ? (
+                <div className="text-sm font-semibold text-slate-500">
+                  Loading account summary...
                 </div>
-
-                {/* Loan Limit */}
-                <div>
-                  <p className="text-[11px] uppercase tracking-widest text-secondary/60 font-bold">
-                    Loan Limit
-                  </p>
-                  <p className="text-lg font-semibold text-tertiary">
-                    KES 250,000
-                  </p>
+              ) : accountsError ? (
+                <div className="text-sm font-semibold text-red-500">
+                  {accountsError}
                 </div>
+              ) : (
+                <>
+                  {accounts.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {accounts.map((account) => {
+                        const isActive = selectedAccount?.id === account.id;
+                        return (
+                          <button
+                            key={account.id}
+                            onClick={() => setSelectedAccountId(account.id)}
+                            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest border transition-all ${isActive
+                                ? "bg-primary text-white border-primary shadow-lg shadow-primary/20"
+                                : "bg-white text-primary border-surface-container hover:bg-slate-50"
+                              }`}
+                          >
+                            {account.accountName || account.type || "Account"}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
 
-                {/* Add Funds */}
-                <div className="group cursor-pointer">
-                  <p className="text-[11px] uppercase tracking-widest text-secondary/60 font-bold mb-1">
-                    Action
-                  </p>
-                  <div className="flex items-center gap-2 text-primary font-semibold">
-                    <Plus className="w-4 h-4 opacity-70 group-hover:opacity-100 transition" />
-                    <span className="group-hover:underline">Add Funds</span>
+                  <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-6 sm:gap-8">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-widest text-secondary/60 font-bold">
+                        Total Balance
+                      </p>
+                      <h3 className="text-xl md:text-2xl font-serif font-bold text-primary">
+                        {totalBalance}
+                      </h3>
+                    </div>
+
+                    <div>
+                      <p className="text-[11px] uppercase tracking-widest text-secondary/60 font-bold">
+                        Active Account
+                      </p>
+                      <p className="text-lg font-semibold text-tertiary">
+                        {selectedAccount?.accountName || "N/A"}
+                      </p>
+                    </div>
+
+                    <div className="group cursor-pointer">
+                      <p className="text-[11px] uppercase tracking-widest text-secondary/60 font-bold mb-1">
+                        Action
+                      </p>
+                      <div className="flex items-center gap-2 text-primary font-semibold">
+                        <Plus className="w-4 h-4 opacity-70 group-hover:opacity-100 transition" />
+                        <span className="group-hover:underline">Add Funds</span>
+                      </div>
+                    </div>
+
+                    <div className="group cursor-pointer">
+                      <p className="text-[11px] uppercase tracking-widest text-secondary/60 font-bold mb-1">
+                        Statement
+                      </p>
+                      <div className="flex items-center gap-2 text-primary font-semibold">
+                        <Download className="w-4 h-4 opacity-70 group-hover:opacity-100 transition" />
+                        <span className="group-hover:underline">
+                          Download Statement
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-
-                {/* Download Statement */}
-                <div className="group cursor-pointer">
-                  <p className="text-[11px] uppercase tracking-widest text-secondary/60 font-bold mb-1">
-                    Statement
-                  </p>
-                  <div className="flex items-center gap-2 text-primary font-semibold">
-                    <Download className="w-4 h-4 opacity-70 group-hover:opacity-100 transition" />
-                    <span className="group-hover:underline">
-                      Download Statement
-                    </span>
-                  </div>
-                </div>
-              </div>
+                </>
+              )}
             </div>
           </motion.section>
         </div>
 
-        {/* RIGHT */}
+        {/* RIGHT CARD */}
         <motion.div
           initial={{ opacity: 0, x: 16 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.08 }}
-          className="bg-[#4b6076] text-white rounded-xl s overflow-hidden "
+          className="bg-[#4b6076] text-white rounded-xl overflow-hidden"
         >
-          {/* Card */}
-          <div className="relative bg-gradient-to-br from-[#1f2b37] to-[#2f3e4d] rounded-xl p-5 shadow-xl overflow-hidden">
-            {/* Subtle glow */}
-            {/* Top Row */}
-            <div className="flex justify-between items-start relative z-10">
-              <div>
-                <p className="text-[10px] uppercase tracking-widest text-white/50 font-bold">
-                  Sacco Account
-                </p>
-                <h3 className="text-lg font-serif font-black mt-1">OneSacco</h3>
+          <div className="relative bg-gradient-to-br from-[#1f2b37] to-[#2f3e4d] rounded-xl p-5 shadow-xl overflow-hidden min-h-[230px]">
+            {loadingAccounts ? (
+              <div className="relative z-10 text-sm text-white/80 font-semibold">
+                Loading account card...
               </div>
-
-              <div className="text-right">
-                <p className="text-[10px] text-white/50 uppercase tracking-widest">
-                  Status
-                </p>
-                <p className="text-xs font-bold text-emerald-300">Active</p>
+            ) : accountsError ? (
+              <div className="relative z-10 text-sm text-red-200 font-semibold">
+                {accountsError}
               </div>
-            </div>
-
-            {/* Chip */}
-            <div className="mt-6 mb-6 relative z-10">
-              <div className="w-10 h-7 rounded-md bg-yellow-400/80" />
-            </div>
-
-            {/* Account Number */}
-            <div className="relative z-10">
-              <p className="tracking-[0.3em] text-lg font-mono font-semibold">
-                1234 5678 9012
-              </p>
-            </div>
-
-            {/* Bottom Row */}
-            <div className="mt-6 flex justify-between items-end relative z-10">
-              <div>
-                <p className="text-[10px] text-white/50 uppercase tracking-widest">
-                  Account Holder
-                </p>
-                <p className="font-bold text-sm">Chrispine Owuor</p>
+            ) : !selectedAccount ? (
+              <div className="relative z-10 text-sm text-white/80 font-semibold">
+                No account found.
               </div>
+            ) : (
+              <>
+                <div className="flex justify-between items-start relative z-10">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-white/50 font-bold">
+                      Sacco Account
+                    </p>
+                    <h3 className="text-lg font-serif font-black mt-1">
+                      {selectedAccount.accountName || "OneSacco"}
+                    </h3>
+                  </div>
 
-              <div className="text-right">
-                <p className="text-[10px] text-white/50 uppercase tracking-widest">
-                  Type
-                </p>
-                <p className="font-bold text-sm">Savings</p>
-              </div>
-            </div>
+                  <div className="text-right">
+                    <p className="text-[10px] text-white/50 uppercase tracking-widest">
+                      Balance
+                    </p>
+                    <div className="mt-1 flex items-center justify-end gap-2">
+                      <p className="text-sm font-black text-white">
+                        {selectedAccount.balance || "KES 0.00"}
+                      </p>
+                      <span className="relative flex h-2.5 w-2.5">
+                        <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400 shadow-[0_0_10px_rgba(74,222,128,0.9)]" />
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 mb-6 flex items-center justify-between gap-4 relative z-10">
+                  <div className="w-10 h-7 rounded-md bg-yellow-400/80 shadow-inner" />
+                  
+                </div>
+
+                <div className="relative z-10 flex ">
+                  <p className="tracking-[0.18em] text-base md:text-lg font-mono font-semibold break-all">
+                    {formatAccountNumber(selectedAccount.accountNumber)}
+                  </p>
+                  <div className="ml-auto flex items-center gap-6 text-sm font-bold text-white">
+                    <p>{selectedAccount.owner || user?.username || "N/A"}</p>
+                    <p>{selectedAccount.type || "N/A"}</p>
+                  </div>
+                </div>
+              </>
+            )}  
           </div>
         </motion.div>
       </header>
 
-    <hr />
+      <hr />
 
       {/* Transactions Table */}
       <motion.div
@@ -257,7 +375,6 @@ export default function AccountsPage() {
         transition={{ delay: 0.1 }}
         className="bg-white rounded-2xl mt-1 shadow-xl shadow-slate-200/50 border border-surface-container overflow-hidden"
       >
-        {/* Filters */}
         <div className="p-4 flex flex-col md:flex-row gap-3 items-center justify-between border-b border-surface-container bg-slate-50/50">
           <div className="flex items-center gap-3 w-full md:w-auto flex-wrap">
             <div className="relative flex-1 md:w-56">
@@ -290,12 +407,10 @@ export default function AccountsPage() {
           </div>
         </div>
 
-        {/* Meta */}
         <div className="p-4 border-b border-surface-container bg-slate-50/50 text-xs font-bold text-slate-400 uppercase tracking-widest">
           Showing {recentTransactions.length} recent transactions
         </div>
 
-        {/* Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[980px]">
             <thead>
@@ -388,7 +503,6 @@ export default function AccountsPage() {
           </table>
         </div>
 
-        {/* Pagination */}
         <div className="p-4 bg-white border-t border-slate-100 flex items-center justify-between">
           <button className="px-3 py-1.5 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-colors flex items-center gap-2 disabled:opacity-50">
             <ChevronLeft className="w-4 h-4" />
@@ -418,7 +532,6 @@ export default function AccountsPage() {
         </div>
       </motion.div>
 
-      {/* Footer */}
       <footer className="mt-16 py-10 border-t border-surface-container flex flex-col md:flex-row justify-between items-center gap-6">
         <div className="flex items-center gap-4">
           <ShieldCheck className="w-6 h-6 text-primary" />

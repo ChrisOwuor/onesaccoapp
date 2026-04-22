@@ -17,8 +17,10 @@ const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", to: "/app" },
   { icon: Users, label: "Members", to: "/app/members" },
   { icon: Receipt, label: "Ledger", to: "/app/ledger" },
-  { icon: Banknote, label: "Accounts", to: "/app/my-account" },
+  { icon: Banknote, label: "My Account", to: "/app/my-account" },
+   { icon: Banknote, label: "Accounts", to: "/app/accounts" },
 ];
+
 
 const loanItems = [
   { label: "All Loans", to: "/app/loans" },

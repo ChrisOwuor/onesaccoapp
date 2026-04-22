@@ -56,6 +56,7 @@ export function AuthProvider({ children }) {
     const decoded = decodeJwt(token);
     if (!decoded) return null;
     const userObj = {
+      id: decoded.id || null,
       email: decoded.email || decoded.sub || null,
       username: decoded.username || null,
       role: decoded.role || decoded.roles || decoded.authority || null,
