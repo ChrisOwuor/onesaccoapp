@@ -1,5 +1,5 @@
-import React from "react";
-import { motion } from "motion/react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   Download,
   Plus,
@@ -12,34 +12,114 @@ import {
   Wallet,
   Landmark,
   HandCoins,
-  TrendingUp,
-  TrendingDown,
   PiggyBank,
+  RefreshCw,
+  X,
+  Eye,
+  LoaderCircle,
 } from "lucide-react";
+import { useAuth } from "../context/AuthContext.jsx";
 
-const LedgerRow = ({
-  date,
-  refId,
-  account,
-  channel,
-  description,
-  amount,
-  status,
-}) => {
-  const statusStyles = {
-    COMPLETED: "text-emerald-600",
-    PROCESSING: "text-amber-600",
-    FLAGGED: "text-red-600",
-    PENDING: "text-tertiary",
-  };
+const apiUrl = import.meta.env.VITE_API_URL;
 
-  const dotStyles = {
-    COMPLETED: "bg-emerald-500",
-    PROCESSING: "bg-amber-500",
-    FLAGGED: "bg-red-500",
-    PENDING: "bg-tertiary",
-  };
+const ACCOUNT_ICON_MAP = {
+  "1001": Landmark,
+  "1002": Wallet,
+  "1003": Wallet,
+  "2001": PiggyBank,
+  "1004": HandCoins,
+};
 
+const STATUS_STYLES = {
+  POSTED: "text-emerald-600",
+  PENDING: "text-amber-600",
+  REVERSED: "text-red-600",
+};
+
+const STATUS_DOT_STYLES = {
+  POSTED: "bg-emerald-500",
+  PENDING: "bg-amber-500",
+  REVERSED: "bg-red-500",
+};
+
+function formatCurrency(amount) {
+  const value = Number(amount || 0);
+  return new Intl.NumberFormat("en-KE", {
+    style: "currency",
+    currency: "KES",
+    minimumFractionDigits: 2,
+  }).format(value);
+}
+
+function formatDate(dateString) {
+  if (!dateString) return "-";
+  const date = new Date(dateString);
+  return new Intl.DateTimeFormat("en-KE", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function BalanceCardSkeleton() {
+  return (
+    <div className="px-4 py-3 flex items-center justify-between gap-3 animate-pulse">
+      <div className="flex items-center gap-2.5 min-w-0">
+        <div className="h-8 w-8 rounded-md bg-white/10 shrink-0" />
+        <div className="min-w-0 space-y-2">
+          <div className="h-3 w-28 rounded bg-white/10" />
+          <div className="h-2 w-16 rounded bg-white/10" />
+        </div>
+      </div>
+      <div className="space-y-2 text-right">
+        <div className="h-3 w-24 rounded bg-white/10" />
+        <div className="h-2 w-20 rounded bg-white/10" />
+      </div>
+    </div>
+  );
+}
+
+function LedgerTableSkeleton() {
+  return (
+    <tbody className="divide-y divide-slate-100">
+      {Array.from({ length: 6 }).map((_, index) => (
+        <tr key={index}>
+          <td className="px-4 py-4">
+            <div className="animate-pulse space-y-2">
+              <div className="h-3 w-28 rounded bg-slate-200" />
+              <div className="h-2 w-20 rounded bg-slate-100" />
+            </div>
+          </td>
+          <td className="px-4 py-4">
+            <div className="animate-pulse space-y-2">
+              <div className="h-3 w-24 rounded bg-slate-200" />
+              <div className="h-2 w-16 rounded bg-slate-100" />
+            </div>
+          </td>
+          <td className="px-4 py-4">
+            <div className="animate-pulse space-y-2">
+              <div className="h-3 w-40 rounded bg-slate-200" />
+              <div className="h-3 w-28 rounded bg-slate-100" />
+            </div>
+          </td>
+          <td className="px-4 py-4">
+            <div className="animate-pulse h-3 w-24 rounded bg-slate-200 ml-auto" />
+          </td>
+          <td className="px-4 py-4">
+            <div className="animate-pulse h-3 w-16 rounded bg-slate-200" />
+          </td>
+          <td className="px-4 py-4">
+            <div className="animate-pulse h-8 w-8 rounded-lg bg-slate-100 ml-auto" />
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  );
+}
+
+function LedgerRow({ row, onView }) {
   return (
     <motion.tr
       initial={{ opacity: 0, x: -10 }}
@@ -48,135 +128,257 @@ const LedgerRow = ({
     >
       <td className="px-4 py-3">
         <div className="space-y-1">
-          <p className="text-sm font-bold text-primary">{date}</p>
+          <p className="text-sm font-bold text-primary">
+            {formatDate(row.transactionDate)}
+          </p>
           <p className="text-[10px] text-slate-400 font-mono font-bold tracking-tight">
-            {refId}
+            {row.transactionNo}
           </p>
         </div>
       </td>
 
       <td className="px-4 py-3">
         <div className="space-y-1">
-          <p className="text-sm font-bold text-primary">{account}</p>
+          <p className="text-sm font-bold text-primary">
+            {row.transactionType?.replaceAll("_", " ")}
+          </p>
           <p className="text-[10px] text-slate-400 font-mono uppercase tracking-widest">
-            {channel}
+            {row.channel}
           </p>
         </div>
       </td>
 
       <td className="px-4 py-3">
         <p className="text-[13px] font-serif font-black text-primary">
-          {description}
+          {row.narration}
+        </p>
+        <p className="text-[10px] text-slate-400 font-mono uppercase tracking-widest mt-1">
+          {row.createdBy}
         </p>
       </td>
 
       <td className="px-4 py-3">
-        <p className="text-sm font-black text-primary text-right">{amount}</p>
+        <p className="text-sm font-black text-primary text-right">
+          {formatCurrency(row.totalAmount)}
+        </p>
       </td>
 
       <td className="px-4 py-3">
         <div
-          className={`flex items-center gap-2 font-black text-[10px] uppercase tracking-widest ${statusStyles[status]}`}
+          className={`flex items-center gap-2 font-black text-[10px] uppercase tracking-widest ${
+            STATUS_STYLES[row.status] || "text-slate-500"
+          }`}
         >
           <span
-            className={`w-2 h-2 rounded-full ${dotStyles[status]} animate-pulse`}
-          ></span>
-          {status}
+            className={`w-2 h-2 rounded-full ${
+              STATUS_DOT_STYLES[row.status] || "bg-slate-400"
+            }`}
+          />
+          {row.status}
         </div>
       </td>
 
       <td className="px-4 py-3 text-right">
-        <button className="text-slate-300 hover:text-primary transition-colors p-2 hover:bg-slate-200/50 rounded-lg">
-          <MoreVertical className="w-5 h-5" />
+        <button
+          type="button"
+          onClick={() => onView(row.id)}
+          className="text-slate-400 hover:text-primary transition-colors p-2 hover:bg-slate-200/50 rounded-lg inline-flex items-center justify-center"
+        >
+          <Eye className="w-5 h-5" />
         </button>
       </td>
     </motion.tr>
   );
-};
+}
 
 export default function SaccoLedger() {
-  const ledgerRows = [
-    {
-      date: "24 Oct 2023",
-      refId: "GL-TRX-9920110",
-      account: "M-Pesa Collection",
-      channel: "Mobile Money",
-      description: "Loan disbursement to member account",
-      amount: "KES 45,000.00",
-      status: "COMPLETED",
-    },
-    {
-      date: "23 Oct 2023",
-      refId: "GL-TRX-9920109",
-      account: "Equity Bank Main",
-      channel: "Bank Deposit",
-      description: "Member savings contribution settlement",
-      amount: "KES 120,000.00",
-      status: "COMPLETED",
-    },
-    {
-      date: "23 Oct 2023",
-      refId: "GL-TRX-9920108",
-      account: "Operations Float",
-      channel: "Internal Transfer",
-      description: "Branch maintenance and logistics expense",
-      amount: "KES 4,500.00",
-      status: "PROCESSING",
-    },
-    {
-      date: "22 Oct 2023",
-      refId: "GL-TRX-9920107",
-      account: "Main Ledger Control",
-      channel: "Reconciliation",
-      description: "Unmatched C2B settlement under review",
-      amount: "KES 82,400.00",
-      status: "FLAGGED",
-    },
-    {
-      date: "21 Oct 2023",
-      refId: "GL-TRX-9920106",
-      account: "Loan Recovery Pool",
-      channel: "Standing Order",
-      description: "Monthly loan repayment inflow",
-      amount: "KES 63,200.00",
-      status: "COMPLETED",
-    },
-  ];
+  const { accessToken } = useAuth();
 
-  const accountSummary = [
-    {
-      name: "M-Pesa Float",
-      value: "KES 4.82M",
-      icon: Wallet,
-      trend: "+4.2%",
-      positive: true,
+  const [accountBalances, setAccountBalances] = useState([]);
+  const [accountsLoading, setAccountsLoading] = useState(true);
+  const [accountsRefreshing, setAccountsRefreshing] = useState(false);
+  const [accountsError, setAccountsError] = useState("");
+
+  const [transactions, setTransactions] = useState([]);
+  const [transactionsLoading, setTransactionsLoading] = useState(true);
+  const [transactionsRefreshing, setTransactionsRefreshing] = useState(false);
+  const [transactionsError, setTransactionsError] = useState("");
+  const [tablePage, setTablePage] = useState(0);
+  const [tableSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+
+  const [selectedTransactionId, setSelectedTransactionId] = useState(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [transactionDetails, setTransactionDetails] = useState(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsError, setDetailsError] = useState("");
+
+  const totalBalance = useMemo(() => {
+    return accountBalances.reduce(
+      (sum, account) => sum + Number(account.balance || 0),
+      0
+    );
+  }, [accountBalances]);
+
+  const filteredTransactions = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+
+    return transactions.filter((item) => {
+      const matchesStatus =
+        statusFilter === "ALL" ? true : item.status === statusFilter;
+
+      const matchesSearch =
+        !normalizedSearch ||
+        item.transactionNo?.toLowerCase().includes(normalizedSearch) ||
+        item.narration?.toLowerCase().includes(normalizedSearch) ||
+        item.transactionType?.toLowerCase().includes(normalizedSearch) ||
+        item.channel?.toLowerCase().includes(normalizedSearch);
+
+      return matchesStatus && matchesSearch;
+    });
+  }, [transactions, search, statusFilter]);
+
+  const fetchCoreAccountBalances = useCallback(
+    async (isRefresh = false) => {
+      try {
+        if (isRefresh) {
+          setAccountsRefreshing(true);
+        } else {
+          setAccountsLoading(true);
+        }
+
+        setAccountsError("");
+
+        const response = await fetch(
+          `${apiUrl}/api/ledger/core-account-balances`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to load core account balances");
+        }
+
+        const data = await response.json();
+        setAccountBalances(Array.isArray(data) ? data : []);
+      } catch (error) {
+        setAccountsError(error.message || "Failed to load balances");
+      } finally {
+        setAccountsLoading(false);
+        setAccountsRefreshing(false);
+      }
     },
-    {
-      name: "Bank Reserve",
-      value: "KES 12.45M",
-      icon: Landmark,
-      trend: "+1.8%",
-      positive: true,
+    [accessToken]
+  );
+
+  const fetchTransactions = useCallback(
+    async (page = 0, isRefresh = false) => {
+      try {
+        if (isRefresh) {
+          setTransactionsRefreshing(true);
+        } else {
+          setTransactionsLoading(true);
+        }
+
+        setTransactionsError("");
+
+        const response = await fetch(
+          `${apiUrl}/api/ledger/transactions?page=${page}&size=${tableSize}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to load ledger transactions");
+        }
+
+        const data = await response.json();
+
+        setTransactions(Array.isArray(data.content) ? data.content : []);
+        setTotalPages(data.totalPages ?? 0);
+        setTotalElements(data.totalElements ?? 0);
+        setTablePage(data.number ?? page);
+      } catch (error) {
+        setTransactionsError(error.message || "Failed to load transactions");
+      } finally {
+        setTransactionsLoading(false);
+        setTransactionsRefreshing(false);
+      }
     },
-    {
-      name: "Savings Pool",
-      value: "KES 18.20M",
-      icon: PiggyBank,
-      trend: "+7.1%",
-      positive: true,
+    [accessToken, tableSize]
+  );
+
+  const fetchTransactionDetails = useCallback(
+    async (transactionId) => {
+      try {
+        setDetailsLoading(true);
+        setDetailsError("");
+        setTransactionDetails(null);
+
+        const response = await fetch(
+          `${apiUrl}/api/ledger/transactions/${transactionId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to load transaction details");
+        }
+
+        const data = await response.json();
+        setTransactionDetails(data);
+      } catch (error) {
+        setDetailsError(error.message || "Failed to load transaction details");
+      } finally {
+        setDetailsLoading(false);
+      }
     },
-    {
-      name: "Loans Receivable",
-      value: "KES 8.12M",
-      icon: HandCoins,
-      trend: "-2.4%",
-      positive: false,
-    },
-  ];
+    [accessToken]
+  );
+
+  const handleOpenDetails = async (transactionId) => {
+    setSelectedTransactionId(transactionId);
+    setDetailsOpen(true);
+    await fetchTransactionDetails(transactionId);
+  };
+
+  const handleCloseDetails = () => {
+    setDetailsOpen(false);
+    setSelectedTransactionId(null);
+    setTransactionDetails(null);
+    setDetailsError("");
+  };
+
+  useEffect(() => {
+    fetchCoreAccountBalances();
+  }, [fetchCoreAccountBalances]);
+
+  useEffect(() => {
+    fetchTransactions(0);
+  }, [fetchTransactions]);
+
+  const currentStart =
+    totalElements === 0 ? 0 : Math.min(tablePage * tableSize + 1, totalElements);
+  const currentEnd = Math.min((tablePage + 1) * tableSize, totalElements);
 
   return (
     <>
-      {/* Header */}
       <header className="mb-10 grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6 items-start">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -193,9 +395,8 @@ export default function SaccoLedger() {
             </h1>
 
             <p className="text-secondary/80 max-w-2xl text-lg font-medium leading-relaxed">
-              Centralized oversight of sacco financial movements across member
-              savings, bank reserves, loan disbursements, and mobile money
-              channels.
+              Centralized oversight of sacco financial movements across global
+              accounts and posted ledger transactions.
             </p>
           </div>
 
@@ -204,6 +405,7 @@ export default function SaccoLedger() {
               <Download className="w-5 h-5 group-hover:translate-y-0.5 transition-transform" />
               Export Ledger
             </button>
+
             <button className="px-6 py-3.5 bg-primary text-white font-bold rounded-lg shadow-xl shadow-primary/20 hover:bg-primary-container hover:-translate-y-0.5 transition-all flex items-center gap-2">
               <Plus className="w-5 h-5" />
               New Entry
@@ -217,8 +419,7 @@ export default function SaccoLedger() {
           transition={{ delay: 0.08 }}
           className="bg-primary text-white rounded-xl shadow-lg overflow-hidden"
         >
-          {/* Header (smaller now) */}
-          <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
+          <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between gap-3">
             <div>
               <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">
                 Accounts
@@ -228,102 +429,154 @@ export default function SaccoLedger() {
               </h3>
             </div>
 
-            <p className="text-[11px] font-black text-white/70">KES 43.59M</p>
+            <div className="flex items-center gap-2">
+              <p className="text-[11px] font-black text-white/70">
+                {formatCurrency(totalBalance)}
+              </p>
+              <button
+                type="button"
+                onClick={() => fetchCoreAccountBalances(true)}
+                disabled={accountsRefreshing}
+                className="h-8 w-8 rounded-lg bg-white/10 hover:bg-white/15 transition-colors flex items-center justify-center disabled:opacity-50"
+              >
+                <RefreshCw
+                  className={`w-4 h-4 ${
+                    accountsRefreshing ? "animate-spin" : ""
+                  }`}
+                />
+              </button>
+            </div>
           </div>
 
-          {/* Compact List */}
-          <div className="divide-y divide-white/10">
-            {accountSummary.map((item) => {
-              const Icon = item.icon;
-              const TrendIcon = item.positive ? TrendingUp : TrendingDown;
-
-              return (
-                <div
-                  key={item.name}
-                  className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-white/5 transition-colors"
+          <div className="divide-y divide-white/10 min-h-[280px]">
+            {accountsLoading ? (
+              <>
+                <BalanceCardSkeleton />
+                <BalanceCardSkeleton />
+                <BalanceCardSkeleton />
+                <BalanceCardSkeleton />
+              </>
+            ) : accountsError ? (
+              <div className="px-4 py-8 text-center">
+                <p className="text-sm font-bold text-red-200">{accountsError}</p>
+                <button
+                  type="button"
+                  onClick={() => fetchCoreAccountBalances(true)}
+                  className="mt-3 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-xs font-black uppercase tracking-widest"
                 >
-                  {/* Left */}
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="h-8 w-8 rounded-md bg-white/10 flex items-center justify-center shrink-0">
-                      <Icon className="w-4 h-4 text-white" />
-                    </div>
+                  Retry
+                </button>
+              </div>
+            ) : accountBalances.length === 0 ? (
+              <div className="px-4 py-8 text-center text-white/70 text-sm font-bold">
+                No core account balances found
+              </div>
+            ) : (
+              accountBalances.map((item) => {
+                const Icon = ACCOUNT_ICON_MAP[item.accountCode] || Wallet;
 
-                    <div className="min-w-0">
-                      <p className="text-[13px] font-bold text-white truncate">
-                        {item.name}
-                      </p>
-                      <div
-                        className={`mt-0.5 flex items-center gap-1 text-[9px] font-black uppercase tracking-widest ${
-                          item.positive ? "text-emerald-300" : "text-red-300"
-                        }`}
-                      >
-                        <TrendIcon className="w-3 h-3" />
-                        {item.trend}
+                return (
+                  <div
+                    key={item.accountId}
+                    className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-white/5 transition-colors"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="h-8 w-8 rounded-md bg-white/10 flex items-center justify-center shrink-0">
+                        <Icon className="w-4 h-4 text-white" />
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="text-[13px] font-bold text-white truncate">
+                          {item.accountName}
+                        </p>
+                        <div className="mt-0.5 flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-white/60">
+                          <span>{item.accountCode}</span>
+                          <span>•</span>
+                          <span>{item.accountType}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Right */}
-                  <div className="text-right shrink-0">
-                    <p className="text-sm font-serif font-black text-white">
-                      {item.value}
-                    </p>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-serif font-black text-white">
+                        {formatCurrency(item.balance)}
+                      </p>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-white/50 mt-1">
+                        Dr {formatCurrency(item.totalDebits)} • Cr{" "}
+                        {formatCurrency(item.totalCredits)}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </motion.div>
       </header>
 
-      {/* Ledger Table */}
       <motion.div
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.1 }}
         className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-surface-container overflow-hidden"
       >
-        {/* Filters */}
         <div className="p-4 flex flex-col md:flex-row gap-3 items-center justify-between border-b border-surface-container bg-slate-50/50">
           <div className="flex items-center gap-3 w-full md:w-auto flex-wrap">
-            <div className="relative flex-1 md:w-56">
-              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-              <select className="w-full bg-white border border-surface-container py-2 rounded-xl text-sm font-bold text-primary pl-10 pr-4 appearance-none focus:ring-2 focus:ring-primary/10 transition-all outline-none">
-                <option>All Accounts</option>
-                <option>Bank Ledger</option>
-                <option>M-Pesa Ledger</option>
-                <option>Loan Ledger</option>
-                <option>Savings Ledger</option>
-              </select>
-            </div>
-
             <div className="relative flex-1 md:w-48">
-              <select className="w-full bg-white border border-surface-container py-2 rounded-xl text-sm font-bold text-primary px-4 appearance-none focus:ring-2 focus:ring-primary/10 transition-all outline-none">
-                <option>Status: All</option>
-                <option>Completed</option>
-                <option>Processing</option>
-                <option>Flagged</option>
-                <option>Pending</option>
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full bg-white border border-surface-container py-2 rounded-xl text-sm font-bold text-primary pl-10 pr-4 appearance-none focus:ring-2 focus:ring-primary/10 transition-all outline-none"
+              >
+                <option value="ALL">Status: All</option>
+                <option value="POSTED">Posted</option>
+                <option value="PENDING">Pending</option>
+                <option value="REVERSED">Reversed</option>
               </select>
             </div>
           </div>
 
-          <div className="relative flex-1 min-w-[280px] md:w-[320px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search by ref, account or description..."
-              className="w-full bg-white border border-surface-container py-2 pl-10 pr-4 rounded-xl text-sm font-bold text-primary focus:ring-2 focus:ring-primary/10 transition-all outline-none"
-            />
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <div className="relative flex-1 min-w-[280px] md:w-[320px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by txn no, type, channel or narration..."
+                className="w-full bg-white border border-surface-container py-2 pl-10 pr-4 rounded-xl text-sm font-bold text-primary focus:ring-2 focus:ring-primary/10 transition-all outline-none"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => fetchTransactions(tablePage, true)}
+              disabled={transactionsRefreshing}
+              className="h-11 w-11 shrink-0 rounded-xl border border-surface-container bg-white hover:bg-slate-50 flex items-center justify-center disabled:opacity-50"
+            >
+              <RefreshCw
+                className={`w-4 h-4 text-primary ${
+                  transactionsRefreshing ? "animate-spin" : ""
+                }`}
+              />
+            </button>
           </div>
         </div>
 
-        {/* Table Meta */}
-        <div className="p-4 border-b border-surface-container bg-slate-50/50 text-xs font-bold text-slate-400 uppercase tracking-widest">
-          Showing 5 of 1,248 ledger transactions
+        <div className="p-4 border-b border-surface-container bg-slate-50/50 text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center justify-between gap-3">
+          <span>
+            Showing {currentStart} - {currentEnd} of {totalElements} ledger
+            transactions
+          </span>
+          {transactionsLoading ? (
+            <span className="inline-flex items-center gap-2">
+              <LoaderCircle className="w-4 h-4 animate-spin" />
+              Loading transactions
+            </span>
+          ) : null}
         </div>
 
-        {/* Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -332,7 +585,7 @@ export default function SaccoLedger() {
                   Entry Date
                 </th>
                 <th className="px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em]">
-                  Ledger Account
+                  Transaction
                 </th>
                 <th className="px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em]">
                   Transaction Narrative
@@ -349,45 +602,73 @@ export default function SaccoLedger() {
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-slate-100">
-              {ledgerRows.map((row, index) => (
-                <LedgerRow key={index} {...row} />
-              ))}
-            </tbody>
+            {transactionsLoading ? (
+              <LedgerTableSkeleton />
+            ) : transactionsError ? (
+              <tbody>
+                <tr>
+                  <td colSpan={6} className="px-4 py-12 text-center">
+                    <p className="text-sm font-bold text-red-600">
+                      {transactionsError}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => fetchTransactions(tablePage, true)}
+                      className="mt-3 px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-black uppercase tracking-widest text-primary"
+                    >
+                      Retry
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            ) : filteredTransactions.length === 0 ? (
+              <tbody>
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="px-4 py-12 text-center text-sm font-bold text-slate-400"
+                  >
+                    No transactions found
+                  </td>
+                </tr>
+              </tbody>
+            ) : (
+              <tbody className="divide-y divide-slate-100">
+                {filteredTransactions.map((row) => (
+                  <LedgerRow key={row.id} row={row} onView={handleOpenDetails} />
+                ))}
+              </tbody>
+            )}
           </table>
         </div>
 
-        {/* Pagination */}
         <div className="p-4 bg-white border-t border-slate-100 flex items-center justify-between">
-          <button className="px-3 py-1.5 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-colors flex items-center gap-2 disabled:opacity-50">
+          <button
+            type="button"
+            onClick={() => fetchTransactions(tablePage - 1)}
+            disabled={tablePage <= 0 || transactionsLoading}
+            className="px-3 py-1.5 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-colors flex items-center gap-2 disabled:opacity-50"
+          >
             <ChevronLeft className="w-4 h-4" />
             Prev
           </button>
 
-          <div className="flex items-center gap-2">
-            <button className="h-8 w-8 rounded-lg bg-primary text-white shadow-lg shadow-primary/20 font-black text-xs">
-              1
-            </button>
-            <button className="h-8 w-8 rounded-lg text-slate-600 font-black text-xs hover:bg-slate-100 transition-colors">
-              2
-            </button>
-            <button className="h-8 w-8 rounded-lg text-slate-600 font-black text-xs hover:bg-slate-100 transition-colors">
-              3
-            </button>
-            <span className="px-2 text-slate-300 font-bold">...</span>
-            <button className="h-8 w-8 rounded-lg text-slate-600 font-black text-xs hover:bg-slate-100 transition-colors">
-              12
-            </button>
+          <div className="text-xs font-black uppercase tracking-widest text-slate-400">
+            Page {totalPages === 0 ? 0 : tablePage + 1} of {totalPages}
           </div>
 
-          <button className="px-3 py-1.5 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-colors flex items-center gap-2 group">
+          <button
+            type="button"
+            onClick={() => fetchTransactions(tablePage + 1)}
+            disabled={tablePage >= totalPages - 1 || transactionsLoading}
+            className="px-3 py-1.5 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-colors flex items-center gap-2 group disabled:opacity-50"
+          >
             Next
             <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
           </button>
         </div>
       </motion.div>
 
-      {/* Footer */}
       <footer className="mt-16 py-10 border-t border-surface-container flex flex-col md:flex-row justify-between items-center gap-6">
         <div className="flex items-center gap-4">
           <ShieldCheck className="w-6 h-6 text-primary" />
@@ -396,9 +677,203 @@ export default function SaccoLedger() {
           </p>
         </div>
         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-          © 2024 Mvita Oils Sacco. All financial records protected.
+          © 2026 Mvita Oils Sacco. All financial records protected.
         </p>
       </footer>
+
+      <AnimatePresence>
+        {detailsOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={handleCloseDetails}
+              className="fixed inset-0 bg-black/30 z-40"
+            />
+
+            <motion.aside
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", stiffness: 260, damping: 28 }}
+              className="fixed right-0 top-0 h-screen w-full max-w-xl bg-white z-50 shadow-2xl border-l border-slate-200 flex flex-col"
+            >
+              <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em]">
+                    Ledger Transaction
+                  </p>
+                  <h3 className="text-lg font-serif font-black text-primary">
+                    Transaction Details
+                  </h3>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleCloseDetails}
+                  className="h-10 w-10 rounded-xl hover:bg-slate-100 flex items-center justify-center text-slate-500"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-5">
+                {detailsLoading ? (
+                  <div className="py-16 flex flex-col items-center justify-center text-slate-500">
+                    <LoaderCircle className="w-6 h-6 animate-spin mb-3" />
+                    <p className="text-sm font-bold">Loading transaction details...</p>
+                  </div>
+                ) : detailsError ? (
+                  <div className="py-10 text-center">
+                    <p className="text-sm font-bold text-red-600">{detailsError}</p>
+                    <button
+                      type="button"
+                      onClick={() => fetchTransactionDetails(selectedTransactionId)}
+                      className="mt-3 px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-black uppercase tracking-widest text-primary"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                ) : transactionDetails ? (
+                  <div className="space-y-6">
+                    <section className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                            Transaction No
+                          </p>
+                          <p className="mt-1 text-sm font-bold text-primary">
+                            {transactionDetails.transactionNo}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                            Status
+                          </p>
+                          <p className="mt-1 text-sm font-bold text-primary">
+                            {transactionDetails.status}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                            Type
+                          </p>
+                          <p className="mt-1 text-sm font-bold text-primary">
+                            {transactionDetails.transactionType?.replaceAll(
+                              "_",
+                              " "
+                            )}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                            Channel
+                          </p>
+                          <p className="mt-1 text-sm font-bold text-primary">
+                            {transactionDetails.channel}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                            Amount
+                          </p>
+                          <p className="mt-1 text-sm font-bold text-primary">
+                            {formatCurrency(transactionDetails.totalAmount)}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                            Date
+                          </p>
+                          <p className="mt-1 text-sm font-bold text-primary">
+                            {formatDate(transactionDetails.transactionDate)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                          Narration
+                        </p>
+                        <p className="mt-1 text-sm font-medium text-primary">
+                          {transactionDetails.narration}
+                        </p>
+                      </div>
+                    </section>
+
+                    <section>
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-serif font-black text-primary">
+                          Journal Entries
+                        </h4>
+
+                        <button
+                          type="button"
+                          onClick={() => fetchTransactionDetails(selectedTransactionId)}
+                          className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-primary"
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                          Refresh
+                        </button>
+                      </div>
+
+                      <div className="space-y-3">
+                        {transactionDetails.journalEntries?.length ? (
+                          transactionDetails.journalEntries.map((entry) => (
+                            <div
+                              key={entry.id}
+                              className="rounded-2xl border border-slate-100 bg-white p-4"
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <p
+                                    className={`text-[10px] font-black uppercase tracking-[0.2em] ${
+                                      entry.entryType === "DEBIT"
+                                        ? "text-emerald-600"
+                                        : "text-red-600"
+                                    }`}
+                                  >
+                                    {entry.entryType}
+                                  </p>
+                                  <p className="mt-1 text-sm font-bold text-primary">
+                                    {entry.accountCode} - {entry.accountName}
+                                  </p>
+                                  <p className="mt-1 text-xs text-slate-500 font-medium">
+                                    {entry.narration || "No narration"}
+                                  </p>
+                                </div>
+
+                                <div className="text-right">
+                                  <p className="text-sm font-serif font-black text-primary">
+                                    {formatCurrency(entry.amount)}
+                                  </p>
+                                  <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">
+                                    Line {entry.entryOrder}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm font-bold text-slate-400">
+                            No journal entries found
+                          </div>
+                        )}
+                      </div>
+                    </section>
+                  </div>
+                ) : null}
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
     </>
   );
 }

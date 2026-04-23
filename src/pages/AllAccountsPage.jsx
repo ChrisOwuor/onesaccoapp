@@ -281,7 +281,7 @@ export default function AllAccountsPage() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            memberAccountNumber: selectedAccount.accountNumber,
+            memberAccountNumber: selectedAccount.accountNumber,     
             amount: Number(depositForm.amount),
             channel: depositForm.channel,
             narration: depositForm.narration.trim(),
